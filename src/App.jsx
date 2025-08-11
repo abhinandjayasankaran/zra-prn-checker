@@ -1,14 +1,104 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Download, FileText, CheckCircle, XCircle, AlertCircle, FolderOpen, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Download, FileText, CheckCircle, XCircle, AlertCircle, FolderOpen, FileSpreadsheet, Copy, Play, ArrowRight, Zap, Shield, BarChart3 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
+const StartupScreen = ({ onGetStarted }) => {
+  const [animationStep, setAnimationStep] = useState(0);
+
+  useEffect(() => {
+    const intervals = [
+      setTimeout(() => setAnimationStep(1), 500),
+      setTimeout(() => setAnimationStep(2), 1000),
+      setTimeout(() => setAnimationStep(3), 1500),
+    ];
+
+    return () => intervals.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
+      <div className="max-w-4xl mx-auto text-center text-white">
+        {/* Logo and Title */}
+        <div className={`transform transition-all duration-1000 ${animationStep >= 0 ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div className="w-24 h-24 mx-auto mb-6 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+            <FileText className="w-12 h-12 text-blue-300" />
+          </div>
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+            ZRA PRN Checker
+          </h1>
+          <p className="text-xl text-blue-200 mb-8">
+            Streamline your ZRA customs payment verification process
+          </p>
+        </div>
+
+        {/* Features */}
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 transform transition-all duration-1000 delay-500 ${animationStep >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <Zap className="w-10 h-10 text-yellow-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Lightning Fast</h3>
+            <p className="text-blue-200 text-sm">Process multiple PRNs simultaneously with real-time status updates</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <Shield className="w-10 h-10 text-green-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Secure & Reliable</h3>
+            <p className="text-blue-200 text-sm">Direct connection to ZRA systems with SSL encryption</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <BarChart3 className="w-10 h-10 text-purple-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Detailed Reports</h3>
+            <p className="text-blue-200 text-sm">Export comprehensive Excel reports with processing history</p>
+          </div>
+        </div>
+
+        {/* How it works */}
+        <div className={`mb-12 transform transition-all duration-1000 delay-1000 ${animationStep >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <h2 className="text-2xl font-semibold mb-6">How it works</h2>
+          <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-sm font-bold">1</div>
+              <span>Upload Excel or paste PRN list</span>
+            </div>
+            <ArrowRight className="w-6 h-6 text-blue-300 hidden md:block" />
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-sm font-bold">2</div>
+              <span>Automatic ZRA verification</span>
+            </div>
+            <ArrowRight className="w-6 h-6 text-blue-300 hidden md:block" />
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-sm font-bold">3</div>
+              <span>Download receipts & reports</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Get Started Button */}
+        <div className={`transform transition-all duration-1000 delay-1500 ${animationStep >= 3 ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <button
+            onClick={onGetStarted}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2 mx-auto"
+          >
+            <Play className="w-5 h-5" />
+            <span>Get Started</span>
+          </button>
+          <p className="text-blue-300 text-sm mt-4">
+            Ready to streamline your PRN verification process?
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
+  const [showStartup, setShowStartup] = useState(true);
   const [prnData, setPrnData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [processingStatus, setProcessingStatus] = useState('');
   const [currentProcessing, setCurrentProcessing] = useState(-1);
   const [processingHistory, setProcessingHistory] = useState([]);
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pastedPRNs, setPastedPRNs] = useState('');
   const fileInputRef = useRef(null);
 
   // Detect if running in Electron
@@ -19,6 +109,10 @@ const App = () => {
     window.process?.type === 'renderer' ||
     navigator.userAgent.includes('Electron')
   );
+
+  if (showStartup) {
+    return <StartupScreen onGetStarted={() => setShowStartup(false)} />;
+  }
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -55,6 +149,110 @@ const App = () => {
       }]);
     } catch (error) {
       alert('Error reading file. Please ensure it\'s a valid Excel file.');
+    }
+  };
+
+  const handlePastedPRNs = () => {
+    if (!pastedPRNs.trim()) {
+      alert('Please paste some PRN numbers first.');
+      return;
+    }
+
+    try {
+      // Parse pasted PRNs - handle various formats
+      const prnLines = pastedPRNs
+        .split(/[\n\r,;|\t]/) // Split by newlines, commas, semicolons, pipes, or tabs
+        .map(line => line.trim())
+        .filter(line => line && line !== '');
+
+      if (prnLines.length === 0) {
+        alert('No valid PRN numbers found. Please check your input.');
+        return;
+      }
+
+      const initialData = prnLines.map(prn => ({
+        prn: prn.trim(),
+        status: 'pending',
+        pdfData: null,
+        error: null,
+        attempts: 0,
+        lastAttempt: null,
+        firstProcessed: null
+      }));
+
+      setPrnData(initialData);
+      setSelectedPdf(null);
+      setShowPasteModal(false);
+      setPastedPRNs('');
+      setProcessingHistory([{
+        timestamp: new Date().toISOString(),
+        action: 'prns_pasted',
+        details: `Pasted ${prnLines.length} PRNs from clipboard`
+      }]);
+    } catch (error) {
+      alert('Error processing pasted PRNs. Please check the format.');
+    }
+  };
+
+  const createExcelFromPastedPRNs = async () => {
+    if (!pastedPRNs.trim()) {
+      alert('Please paste some PRN numbers first.');
+      return;
+    }
+
+    try {
+      // Parse pasted PRNs
+      const prnLines = pastedPRNs
+        .split(/[\n\r,;|\t]/)
+        .map(line => line.trim())
+        .filter(line => line && line !== '');
+
+      if (prnLines.length === 0) {
+        alert('No valid PRN numbers found.');
+        return;
+      }
+
+      // Create Excel data
+      const excelData = prnLines.map((prn, index) => ({
+        'Row': index + 1,
+        'PRN': prn.trim()
+      }));
+
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'PRN List');
+
+      // Generate filename
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+      const filename = `PRN_List_${timestamp}.xlsx`;
+
+      // Save file
+      if (isElectron && window.electronAPI?.saveExcel) {
+        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const buffer = new Uint8Array(wbout);
+        const base64Data = btoa(String.fromCharCode.apply(null, buffer));
+
+        const result = await window.electronAPI.saveExcel(base64Data, filename);
+        
+        if (result.success) {
+          alert(`Excel file created successfully!\n\nLocation: ${result.path}\n\nContains ${prnLines.length} PRN numbers ready for processing.`);
+        } else {
+          alert(`Failed to save Excel file: ${result.error}`);
+        }
+      } else {
+        XLSX.writeFile(workbook, filename);
+        alert(`Excel file "${filename}" downloaded with ${prnLines.length} PRN numbers.`);
+      }
+
+      setProcessingHistory(prev => [...prev, {
+        timestamp: new Date().toISOString(),
+        action: 'excel_created',
+        details: `Created Excel file with ${prnLines.length} PRNs`
+      }]);
+
+    } catch (error) {
+      alert(`Error creating Excel file: ${error.message}`);
     }
   };
 
@@ -381,7 +579,7 @@ const App = () => {
           )}
           
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
+            <div className="flex-1 flex gap-4">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -391,11 +589,21 @@ const App = () => {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full sm:w-auto inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 sm:flex-none inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Upload className="w-5 h-5 mr-2" />
                 Upload Excel File
               </button>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowPasteModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Copy className="w-5 h-5 mr-2" />
+                  Paste PRNs
+                </button>
+              </div>
             </div>
             
             {prnData.length > 0 && (
@@ -467,6 +675,80 @@ const App = () => {
             </div>
           )}
         </div>
+
+        {/* Paste PRNs Modal */}
+        {showPasteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800">Paste PRN Numbers</h2>
+                  <button
+                    onClick={() => {
+                      setShowPasteModal(false);
+                      setPastedPRNs('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-gray-600 text-sm mb-2">
+                    Paste your PRN numbers below. They can be separated by:
+                  </p>
+                  <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    • New lines (one PRN per line)<br/>
+                    • Commas (,)<br/>
+                    • Semicolons (;)<br/>
+                    • Tabs or pipes (|)
+                  </div>
+                </div>
+
+                <textarea
+                  value={pastedPRNs}
+                  onChange={(e) => setPastedPRNs(e.target.value)}
+                  placeholder="Paste your PRN numbers here...&#10;Example:&#10;PRN001&#10;PRN002&#10;PRN003&#10;&#10;Or: PRN001, PRN002, PRN003"
+                  className="w-full h-48 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+
+                <div className="mt-4 text-sm text-gray-600">
+                  {pastedPRNs.trim() && (
+                    <p>
+                      Found: <span className="font-semibold text-blue-600">
+                        {pastedPRNs.split(/[\n\r,;|\t]/).filter(line => line.trim()).length} PRNs
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={handlePastedPRNs}
+                    disabled={!pastedPRNs.trim()}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Use These PRNs
+                  </button>
+                  <button
+                    onClick={createExcelFromPastedPRNs}
+                    disabled={!pastedPRNs.trim()}
+                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Create Excel File
+                  </button>
+                </div>
+                
+                <div className="mt-3 text-xs text-gray-500 text-center">
+                  "Use These PRNs" will load them directly into the app.<br/>
+                  "Create Excel File" will generate a downloadable Excel file for later use.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {prnData.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
