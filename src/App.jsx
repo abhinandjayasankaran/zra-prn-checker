@@ -353,8 +353,8 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="w-full">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -473,7 +473,7 @@ const App = () => {
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">PRN Status ({prnData.length} total)</h2>
               
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
                 {prnData.map((item, index) => (
                   <div key={index} className={`border rounded-lg p-4 transition-colors ${
                     currentProcessing === index ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
@@ -566,7 +566,7 @@ const App = () => {
               <h2 className="text-xl font-semibold text-gray-800 mb-4">PDF Viewer</h2>
               
               {selectedPdf ? (
-                <div className="border rounded-lg overflow-hidden" style={{ height: '500px' }}>
+                <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
                   <iframe
                     src={selectedPdf}
                     className="w-full h-full"
@@ -574,7 +574,7 @@ const App = () => {
                   />
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" style={{ height: '500px' }}>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" style={{ height: '600px' }}>
                   <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">Select a PDF to view it here</p>
                 </div>
