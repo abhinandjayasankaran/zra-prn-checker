@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Download, FileText, CheckCircle, XCircle, AlertCircle, FolderOpen, FileSpreadsheet, Copy, Play, ArrowRight, Zap, Shield, BarChart3 } from 'lucide-react';
+import { Upload, Download, FileText, CheckCircle, XCircle, AlertCircle, FolderOpen, FileSpreadsheet, Copy, Play, ArrowRight, Zap, Shield, BarChart3, Plus, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const StartupScreen = ({ onGetStarted }) => {
@@ -99,6 +99,7 @@ const App = () => {
   const [processingHistory, setProcessingHistory] = useState([]);
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pastedPRNs, setPastedPRNs] = useState('');
+
   const fileInputRef = useRef(null);
 
   // Detect if running in Electron
@@ -135,6 +136,7 @@ const App = () => {
         status: 'pending',
         pdfData: null,
         error: null,
+        details: null,
         attempts: 0,
         lastAttempt: null,
         firstProcessed: null
@@ -142,6 +144,7 @@ const App = () => {
 
       setPrnData(initialData);
       setSelectedPdf(null);
+      setShowPasteModal(false);
       setProcessingHistory([{
         timestamp: new Date().toISOString(),
         action: 'file_uploaded',
@@ -175,6 +178,7 @@ const App = () => {
         status: 'pending',
         pdfData: null,
         error: null,
+        details: null,
         attempts: 0,
         lastAttempt: null,
         firstProcessed: null
@@ -192,6 +196,17 @@ const App = () => {
     } catch (error) {
       alert('Error processing pasted PRNs. Please check the format.');
     }
+  };
+
+  const removePrn = (index) => {
+    const newData = prnData.filter((_, i) => i !== index);
+    setPrnData(newData);
+    
+    setProcessingHistory(prev => [...prev, {
+      timestamp: new Date().toISOString(),
+      action: 'prn_removed',
+      details: `Removed PRN: ${prnData[index].prn}`
+    }]);
   };
 
   const createExcelFromPastedPRNs = async () => {
@@ -265,9 +280,19 @@ const App = () => {
       const result = await window.electronAPI.checkPRN(prn);
       
       if (result.success) {
-        return { status: 'paid', pdfData: result.pdfData, error: null };
+        return { 
+          status: 'paid', 
+          pdfData: result.pdfData, 
+          error: null,
+          details: result.details
+        };
       } else {
-        return { status: result.status, pdfData: null, error: result.error };
+        return { 
+          status: result.status, 
+          pdfData: null, 
+          error: result.error,
+          details: result.details
+        };
       }
     } catch (error) {
       return { status: 'error', pdfData: null, error: error.message };
@@ -282,10 +307,10 @@ const App = () => {
       return;
     }
 
-    // Filter to only process pending, error, or failed PRNs
+    // Filter to only process pending, error, or failed PRNs (excluding unpaid which are valid but not paid)
     const prnIndexesToProcess = prnData
       .map((item, index) => ({ ...item, originalIndex: index }))
-      .filter(item => item.status === 'pending' || item.status === 'error')
+      .filter(item => item.status === 'pending' || item.status === 'error' || item.status === 'invalid' || item.status === 'unknown')
       .map(item => item.originalIndex);
 
     if (prnIndexesToProcess.length === 0) {
@@ -294,7 +319,7 @@ const App = () => {
     }
 
     const totalToProcess = prnIndexesToProcess.length;
-    const alreadyProcessed = prnData.filter(item => item.status === 'paid').length;
+    const alreadyProcessed = prnData.filter(item => item.status === 'paid' || item.status === 'unpaid').length;
     const isRetry = alreadyProcessed > 0;
 
     // Add to processing history
@@ -336,7 +361,8 @@ const App = () => {
         ...updatedData[actualIndex],
         status: result.status,
         pdfData: result.pdfData,
-        error: result.error
+        error: result.error,
+        details: result.details
       };
 
       setPrnData([...updatedData]);
@@ -347,17 +373,18 @@ const App = () => {
     setCurrentProcessing(-1);
     
     const finalSuccessCount = updatedData.filter(item => item.status === 'paid').length;
-    const finalFailCount = updatedData.filter(item => item.status === 'error' || item.status === 'invalid').length;
+    const finalUnpaidCount = updatedData.filter(item => item.status === 'unpaid').length;
+    const finalFailCount = updatedData.filter(item => item.status === 'error' || item.status === 'invalid' || item.status === 'unknown').length;
     
     // Add completion to history
     setProcessingHistory(prev => [...prev, {
       timestamp: new Date().toISOString(),
       action: 'processing_completed',
-      details: `Completed: ${finalSuccessCount} successful, ${finalFailCount} failed`
+      details: `Completed: ${finalSuccessCount} paid, ${finalUnpaidCount} unpaid, ${finalFailCount} failed/invalid`
     }]);
     
     setProcessingStatus(
-      `Processing complete! ✅ ${finalSuccessCount} successful, ❌ ${finalFailCount} failed`
+      `Processing complete! ✅ ${finalSuccessCount} paid, 💰 ${finalUnpaidCount} unpaid, ❌ ${finalFailCount} failed/invalid`
     );
     setTimeout(() => setProcessingStatus(''), 5000);
   };
@@ -425,15 +452,21 @@ const App = () => {
         'First Processed': item.firstProcessed ? new Date(item.firstProcessed).toLocaleString() : 'Not processed',
         'Last Attempt': item.lastAttempt ? new Date(item.lastAttempt).toLocaleString() : 'Not processed',
         'Error Details': item.error || '',
-        'Has PDF': item.pdfData ? 'Yes' : 'No'
+        'Has PDF': item.pdfData ? 'Yes' : 'No',
+        'Amount': item.details?.amount || '',
+        'Currency': item.details?.currency || '',
+        'Taxpayer': item.details?.taxpayer || '',
+        'Description': item.details?.narration || ''
       }));
 
       // Prepare summary data
       const summaryData = [
         { 'Metric': 'Total PRNs', 'Count': prnData.length },
         { 'Metric': 'Paid/Successful', 'Count': prnData.filter(item => item.status === 'paid').length },
-        { 'Metric': 'Invalid/Unpaid', 'Count': prnData.filter(item => item.status === 'invalid').length },
+        { 'Metric': 'Valid/Unpaid', 'Count': prnData.filter(item => item.status === 'unpaid').length },
+        { 'Metric': 'Invalid PRNs', 'Count': prnData.filter(item => item.status === 'invalid').length },
         { 'Metric': 'Errors', 'Count': prnData.filter(item => item.status === 'error').length },
+        { 'Metric': 'Unknown Status', 'Count': prnData.filter(item => item.status === 'unknown').length },
         { 'Metric': 'Pending', 'Count': prnData.filter(item => item.status === 'pending').length },
         { 'Metric': 'Total Retries', 'Count': prnData.reduce((sum, item) => sum + Math.max(0, (item.attempts || 0) - 1), 0) },
         { 'Metric': 'Export Date', 'Count': new Date().toLocaleString() }
@@ -523,9 +556,12 @@ const App = () => {
     switch (status) {
       case 'paid':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'unpaid':
+        return <AlertCircle className="w-5 h-5 text-orange-500" />;
       case 'invalid':
         return <XCircle className="w-5 h-5 text-red-500" />;
       case 'error':
+      case 'unknown':
         return <AlertCircle className="w-5 h-5 text-yellow-500" />;
       default:
         return <div className="w-5 h-5 rounded-full border-2 border-gray-300" />;
@@ -535,8 +571,10 @@ const App = () => {
   const getStatusText = (status) => {
     switch (status) {
       case 'paid': return 'Paid';
-      case 'invalid': return 'Invalid/Unpaid';
+      case 'unpaid': return 'Valid/Unpaid';
+      case 'invalid': return 'Invalid PRN';
       case 'error': return 'Error';
+      case 'unknown': return 'Unknown Status';
       default: return 'Pending';
     }
   };
@@ -544,8 +582,10 @@ const App = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'paid': return 'text-green-700 bg-green-100';
+      case 'unpaid': return 'text-orange-700 bg-orange-100';
       case 'invalid': return 'text-red-700 bg-red-100';
       case 'error': return 'text-yellow-700 bg-yellow-100';
+      case 'unknown': return 'text-purple-700 bg-purple-100';
       default: return 'text-gray-700 bg-gray-100';
     }
   };
@@ -615,7 +655,7 @@ const App = () => {
                 >
                   <FileText className="w-5 h-5 mr-2" />
                   {loading ? 'Processing...' : 
-                    prnData.some(item => item.status === 'paid') ? 'Retry Failed' : 'Check All PRNs'
+                    prnData.some(item => item.status === 'paid' || item.status === 'unpaid') ? 'Retry Failed' : 'Check All PRNs'
                   }
                 </button>
                 
@@ -627,6 +667,7 @@ const App = () => {
                         status: 'pending',
                         pdfData: null,
                         error: null,
+                        details: null,
                         attempts: 0,
                         lastAttempt: null,
                         firstProcessed: null
@@ -765,14 +806,45 @@ const App = () => {
                         {getStatusIcon(item.status, currentProcessing === index)}
                         <span className="font-mono text-sm font-medium">{item.prn}</span>
                       </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
-                        {currentProcessing === index ? 'Processing...' : getStatusText(item.status)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
+                          {currentProcessing === index ? 'Processing...' : getStatusText(item.status)}
+                        </span>
+                        <button
+                          onClick={() => removePrn(index)}
+                          disabled={loading}
+                          className="text-red-500 hover:text-red-700 disabled:text-gray-400 transition-colors"
+                          title="Remove PRN"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                     
                     {item.error && (
                       <div className="text-xs text-red-600 mb-2">
                         Error: {item.error}
+                      </div>
+                    )}
+
+                    {item.details && (
+                      <div className="text-xs text-gray-600 mb-2 bg-gray-50 p-2 rounded">
+                        {item.status === 'paid' && (
+                          <>
+                            <div><strong>Amount:</strong> {item.details.currency} {item.details.amount}</div>
+                            <div><strong>Taxpayer:</strong> {item.details.taxpayer}</div>
+                            <div><strong>Description:</strong> {item.details.narration}</div>
+                          </>
+                        )}
+                        {item.status === 'unpaid' && (
+                          <>
+                            <div><strong>Status:</strong> Payment Pending</div>
+                            <div><strong>Amount Due:</strong> {item.details.currency} {item.details.amount}</div>
+                            <div><strong>Taxpayer:</strong> {item.details.taxpayer}</div>
+                            <div><strong>Description:</strong> {item.details.narration}</div>
+                            <div><strong>PRN Date:</strong> {item.details.prnDate}</div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -807,12 +879,18 @@ const App = () => {
               </div>
 
               <div className="mt-4 pt-4 border-t">
-                <div className="grid grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-5 gap-4 text-sm">
                   <div className="text-center">
                     <div className="text-green-600 font-semibold">
                       {prnData.filter(item => item.status === 'paid').length}
                     </div>
                     <div className="text-gray-500">Paid</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-orange-600 font-semibold">
+                      {prnData.filter(item => item.status === 'unpaid').length}
+                    </div>
+                    <div className="text-gray-500">Unpaid</div>
                   </div>
                   <div className="text-center">
                     <div className="text-red-600 font-semibold">
@@ -822,7 +900,7 @@ const App = () => {
                   </div>
                   <div className="text-center">
                     <div className="text-yellow-600 font-semibold">
-                      {prnData.filter(item => item.status === 'error').length}
+                      {prnData.filter(item => item.status === 'error' || item.status === 'unknown').length}
                     </div>
                     <div className="text-gray-500">Errors</div>
                   </div>
@@ -834,10 +912,10 @@ const App = () => {
                   </div>
                 </div>
                 
-                {prnData.some(item => item.status === 'error' || item.status === 'pending') && (
+                {prnData.some(item => item.status === 'error' || item.status === 'pending' || item.status === 'invalid' || item.status === 'unknown') && (
                   <div className="mt-3 p-2 bg-blue-50 rounded text-center">
                     <p className="text-blue-700 text-xs">
-                      💡 Click "Retry Failed" to only process pending and failed PRNs
+                      💡 Click "Retry Failed" to only process pending, failed and invalid PRNs
                     </p>
                   </div>
                 )}
