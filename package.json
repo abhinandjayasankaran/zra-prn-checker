@@ -1,0 +1,78 @@
+{
+  "name": "zra-prn-checker",
+  "version": "1.0.0",
+  "description": "ZRA Customs PRN Payment Checker Desktop Application",
+  "author": "ZRA Team",
+  "license": "MIT",
+  "main": "src/electron/main.js",
+  "private": true,
+  "homepage": "./",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron-dev": "concurrently --kill-others --success first \"npm run dev\" \"npm run wait-for-dev\"",
+    "wait-for-dev": "wait-on http://localhost:5173 && electron .",
+    "dist": "npm run build && electron-builder --publish=never",
+    "dist-mac": "npm run build && electron-builder --mac",
+    "dist-win": "npm run build && electron-builder --win", 
+    "dist-linux": "npm run build && electron-builder --linux",
+    "clean": "rm -rf release dist node_modules/.cache",
+    "reinstall": "rm -rf node_modules package-lock.json && npm install"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.263.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.3",
+    "vite": "^4.4.5",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.zra.prn-checker",
+    "productName": "ZRA PRN Checker",
+    "copyright": "Copyright © 2024 ZRA Team",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "src/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  }
+}
