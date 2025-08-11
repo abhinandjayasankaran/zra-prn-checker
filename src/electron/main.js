@@ -229,3 +229,31 @@ ipcMain.handle('save-multiple-pdfs', async (event, pdfDataArray) => {
     return { success: false, error: error.message };
   }
 });
+
+// Handle Excel file save
+ipcMain.handle('save-excel', async (event, excelData, filename) => {
+  console.log('📊 Saving Excel file:', filename);
+  
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: filename,
+      filters: [
+        { name: 'Excel Files', extensions: ['xlsx'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (!result.canceled && result.filePath) {
+      const buffer = Buffer.from(excelData, 'base64');
+      fs.writeFileSync(result.filePath, buffer);
+      console.log('✅ Excel file saved successfully:', result.filePath);
+      return { success: true, path: result.filePath };
+    }
+
+    console.log('⚠️ Excel save cancelled by user');
+    return { success: false, error: 'Save cancelled' };
+  } catch (error) {
+    console.error('❌ Error saving Excel file:', error);
+    return { success: false, error: error.message };
+  }
+});

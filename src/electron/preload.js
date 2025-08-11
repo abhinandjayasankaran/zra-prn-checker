@@ -9,6 +9,7 @@ try {
     checkPRN: (prn) => ipcRenderer.invoke('check-prn', prn),
     savePDF: (pdfData, filename) => ipcRenderer.invoke('save-pdf', pdfData, filename),
     saveMultiplePDFs: (pdfDataArray) => ipcRenderer.invoke('save-multiple-pdfs', pdfDataArray),
+    saveExcel: (excelData, filename) => ipcRenderer.invoke('save-excel', excelData, filename),
     isElectron: true
   });
   console.log('✅ Method 1: contextBridge.exposeInMainWorld successful');
@@ -22,6 +23,7 @@ try {
     checkPRN: (prn) => ipcRenderer.invoke('check-prn', prn),
     savePDF: (pdfData, filename) => ipcRenderer.invoke('save-pdf', pdfData, filename),
     saveMultiplePDFs: (pdfDataArray) => ipcRenderer.invoke('save-multiple-pdfs', pdfDataArray),
+    saveExcel: (excelData, filename) => ipcRenderer.invoke('save-excel', excelData, filename),
     isElectron: true
   };
   console.log('✅ Method 2: Direct window assignment successful');

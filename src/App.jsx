@@ -211,7 +211,7 @@ const App = () => {
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (prnData.length === 0) {
       alert('No data to export. Please upload and process PRNs first.');
       return;
@@ -268,18 +268,41 @@ const App = () => {
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
       const filename = `ZRA_PRN_Results_${timestamp}.xlsx`;
 
-      // Save the file
-      XLSX.writeFile(workbook, filename);
+      // Check if running in Electron for proper file saving
+      if (isElectron && window.electronAPI?.saveExcel) {
+        // Convert workbook to buffer for Electron
+        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const buffer = new Uint8Array(wbout);
+        const base64Data = btoa(String.fromCharCode.apply(null, buffer));
 
-      // Show success message
-      alert(`Excel file exported successfully as "${filename}"\n\nSheets included:\n• Results - Detailed PRN results\n• Summary - Statistics overview\n• Processing History - Timeline of actions`);
+        // Use Electron's save dialog
+        const result = await window.electronAPI.saveExcel(base64Data, filename);
+        
+        if (result.success) {
+          alert(`Excel file saved successfully!\n\nLocation: ${result.path}\n\nSheets included:\n• Results - Detailed PRN results\n• Summary - Statistics overview\n• Processing History - Timeline of actions`);
+          
+          // Add to processing history
+          setProcessingHistory(prev => [...prev, {
+            timestamp: new Date().toISOString(),
+            action: 'excel_exported',
+            details: `Exported results to ${result.path}`
+          }]);
+        } else {
+          alert(`Failed to save Excel file: ${result.error}`);
+        }
+      } else {
+        // Fallback to browser download for web version
+        XLSX.writeFile(workbook, filename);
+        
+        alert(`Excel file exported as "${filename}"\n\nNote: In web version, file is downloaded to your default Downloads folder.\n\nSheets included:\n• Results - Detailed PRN results\n• Summary - Statistics overview\n• Processing History - Timeline of actions`);
 
-      // Add to processing history
-      setProcessingHistory(prev => [...prev, {
-        timestamp: new Date().toISOString(),
-        action: 'excel_exported',
-        details: `Exported results to ${filename}`
-      }]);
+        // Add to processing history
+        setProcessingHistory(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          action: 'excel_exported',
+          details: `Exported results to ${filename} (web download)`
+        }]);
+      }
 
     } catch (error) {
       alert(`Error exporting to Excel: ${error.message}`);
